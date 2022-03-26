@@ -59,9 +59,9 @@ void loop() {
   stepper1.run(); // Двигатель 1 работает
   stepper2.run(); // Двигатель 2 работает
   stepper3.run(); // Двигатель 3 работает
-  
-  servo.write(180);
+  // Нельзя тут использовать delay
+  /*servo.write(180);
   delay(1000);
   servo.write(0);
-  delay(1000);
+  delay(1000);*/
 }
