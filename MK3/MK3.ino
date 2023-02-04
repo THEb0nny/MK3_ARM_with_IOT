@@ -6,8 +6,10 @@
 // https://vk.com/wall-174310634_40
 // http://forum.amperka.ru/threads/%D0%91%D0%B8%D0%B1%D0%BB%D0%B8%D0%BE%D1%82%D0%B5%D0%BA%D0%B0-accelstepper.11388/#post-132258
 // http://www.airspayce.com/mikem/arduino/AccelStepper/index.html
+// https://github.com/NicoHood/PinChangeInterrupt
 
 #include "AccelStepper.h"
+#include "PinChangeInterrupt.h"
 #include <Servo.h>
  
 // Определение метода шагового двигателя
@@ -30,11 +32,11 @@
 #define MOTOR3_PIN3 10 // Контакт IN3 платы драйвера двигателя ULN2003 подключен к 28BYJ48
 #define MOTOR3_PIN4 9 // Вывод IN4 платы драйвера двигателя ULN2003 подключен к 28BYJ48
 
-#define CLAW_SERVO_PIN 5 // Пин сервопривода
+#define HALL_SEN1_PIN 69 // Пин датчика холла 1 - A15
+#define HALL_SEN2_PIN 68 // Пин датчика холла 2 - A14
+#define HALL_SEN3_PIN 67 // Пин датчика холла 3 - A13
 
-#define HALL_SEN1_PIN 2 // Пин датчика холла 1
-#define HALL_SEN2_PIN 3 // Пин датчика холла 2
-#define HALL_SEN3_PIN 21 // Пин датчика холла 3
+#define CLAW_SERVO_PIN 5 // Пин сервопривода
 
 Servo servo; // Инициализируем объект серво
 
@@ -50,27 +52,28 @@ volatile byte hall3State = LOW; // Переменная для записи зн
 byte robotState = 0; // Переменая конечного автомата нахождения в состоянии робота
 
 // Функция-обработчик прерывания датчика холла 1
-void HallSensor1Handler() {
+void HallSensor1Handler(void) {
   hall1State = !hall1State;
 }
 
 // Функция-обработчик прерывания датчика холла 2
-void HallSensor2Handler() {
+void HallSensor2Handler(void) {
   hall2State = !hall2State;
 }
 
 // Функция-обработчик прерывания датчика холла 3
-void HallSensor3Handler() {
+void HallSensor3Handler(void) {
   hall3State = !hall3State;
 }
 
 void setup() {
+  Serial.begin(9600); // Инициализируем скорость передачи данных с компом
   pinMode(HALL_SEN1_PIN, INPUT_PULLUP); // Настраиваем пин с датчиком холла 1
   pinMode(HALL_SEN2_PIN, INPUT_PULLUP); // Настраиваем пин с датчиком холла 2
   pinMode(HALL_SEN3_PIN, INPUT_PULLUP); // Настраиваем пин с датчиком холла 3
-  attachInterrupt(digitalPinToInterrupt(HALL_SEN1_PIN), HallSensor1Handler, CHANGE); // Настраиваем прерывание датчика холла 1
-  attachInterrupt(digitalPinToInterrupt(HALL_SEN2_PIN), HallSensor2Handler, CHANGE); // Настраиваем прерывание датчика холла 2
-  attachInterrupt(digitalPinToInterrupt(HALL_SEN3_PIN), HallSensor3Handler, CHANGE); // Настраиваем прерывание датчика холла 3
+  attachPCINT(digitalPinToPCINT(HALL_SEN1_PIN), HallSensor1Handler, CHANGE); // Настраиваем прерывание датчика холла 1
+  attachPCINT(digitalPinToPCINT(HALL_SEN2_PIN), HallSensor2Handler, CHANGE); // Настраиваем прерывание датчика холла 2
+  attachPCINT(digitalPinToPCINT(HALL_SEN3_PIN), HallSensor3Handler, CHANGE); // Настраиваем прерывание датчика холла 3
   stepper1.setMaxSpeed(1500); // Максимальная скорость двигателя 1500
   stepper1.setAcceleration(100); // Ускорение двигателя 50
   stepper2.setMaxSpeed(1500);
@@ -81,8 +84,10 @@ void setup() {
 }
  
 void loop() {
+  Serial.println(String(hall1State) + ", " + String(hall2State) + ", " + String(hall3State));
   if (robotState == 0) { // Состояние 0 - роботу переместиться в нелевые позиции при старте
-    if (hall1State == LOW) { // Если значение датчика холла 1
+    // Если значение датчика холла 1
+    if (hall1State == LOW) {
       // Вращение манипулятора по часовой стрелке
       stepper1.setSpeed(1500); // Установить скорость (в шагах за секунду)
       stepper1.runSpeed(); // Начать движение с текущей заданной скоростью (без плавного ускорения)
@@ -90,7 +95,26 @@ void loop() {
       stepper1.stop(); // Максимально быстрая остановка (без замедления), используя текущие параметры скорости и ускорения
       stepper1.setCurrentPosition(0); // Установить счетчик как текущую позицию. Полезно как задание нулевой координаты. Обнуляет текущую скорость до нуля
     }
-    if (hall1State == LOW && hall2State == LOW && hall3State == LOW) { // Все 3 датчика холла сработали
+    // Если значение датчика холла 1
+    if (hall2State == LOW) {
+      // Вращение манипулятора по часовой стрелке
+      stepper2.setSpeed(1500); // Установить скорость (в шагах за секунду)
+      stepper2.runSpeed(); // Начать движение с текущей заданной скоростью (без плавного ускорения)
+    } else { // Иначе выходит датчик холла 1 сработал
+      stepper2.stop(); // Максимально быстрая остановка (без замедления), используя текущие параметры скорости и ускорения
+      stepper2.setCurrentPosition(0); // Установить счетчик как текущую позицию. Полезно как задание нулевой координаты. Обнуляет текущую скорость до нуля
+    }
+    // Если значение датчика холла 1
+    if (hall3State == LOW) {
+      // Вращение манипулятора по часовой стрелке
+      stepper3.setSpeed(1500); // Установить скорость (в шагах за секунду)
+      stepper3.runSpeed(); // Начать движение с текущей заданной скоростью (без плавного ускорения)
+    } else { // Иначе выходит датчик холла 1 сработал
+      stepper3.stop(); // Максимально быстрая остановка (без замедления), используя текущие параметры скорости и ускорения
+      stepper3.setCurrentPosition(0); // Установить счетчик как текущую позицию. Полезно как задание нулевой координаты. Обнуляет текущую скорость до нуля
+    }
+    // Если все 3 датчика холла сработали
+    if (hall1State == LOW && hall2State == LOW && hall3State == LOW) { 
       robotState = 1; // Записываем другое состояние конечного автомата
     }
   } else if (robotState == 1) { // Состояние 1
