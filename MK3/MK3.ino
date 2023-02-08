@@ -17,15 +17,15 @@
 #define HALFSTEP 8 // Параметры полушага
  
 // Определение контактов шагового двигателя
-#define MOTOR1_PIN1 8 // Контакт IN1 платы драйвера двигателя ULN2003 подключен к 28BYJ48
-#define MOTOR1_PIN2 7 // Вывод IN2 платы драйвера двигателя ULN2003 подключен к 28BYJ48
-#define MOTOR1_PIN3 6 // Вывод платы драйвера двигателя ULN2003 IN# подключен к 28BYJ48 на втором
-#define MOTOR1_PIN4 3 // Вывод IN4 платы драйвера двигателя ULN2003 подключен к 28BYJ48
+#define MOTOR1_PIN1 33 // Контакт IN1 платы драйвера двигателя ULN2003 подключен к 28BYJ48
+#define MOTOR1_PIN2 32 // Вывод IN2 платы драйвера двигателя ULN2003 подключен к 28BYJ48
+#define MOTOR1_PIN3 31 // Вывод платы драйвера двигателя ULN2003 IN3 подключен к 28BYJ48
+#define MOTOR1_PIN4 30 // Вывод IN4 платы драйвера двигателя ULN2003 подключен к 28BYJ48
 
-#define MOTOR2_PIN1 38 // Контакт IN1 платы драйвера двигателя ULN2003 подключен к 28BYJ48
-#define MOTOR2_PIN2 44 // Вывод IN2 платы драйвера двигателя ULN2003 подключен к 28BYJ48
-#define MOTOR2_PIN3 45 // Вывод платы драйвера двигателя ULN2003 IN3 подключен к 28BYJ48 на втором
-#define MOTOR2_PIN4 46 // Вывод IN4 платы драйвера двигателя ULN2003 подключен к 28BYJ48
+#define MOTOR2_PIN1 37 // Контакт IN1 платы драйвера двигателя ULN2003 подключен к 28BYJ48
+#define MOTOR2_PIN2 36 // Вывод IN2 платы драйвера двигателя ULN2003 подключен к 28BYJ48
+#define MOTOR2_PIN3 35 // Вывод платы драйвера двигателя ULN2003 IN3 подключен к 28BYJ48
+#define MOTOR2_PIN4 34 // Вывод IN4 платы драйвера двигателя ULN2003 подключен к 28BYJ48
 
 #define MOTOR3_PIN1 12 // Контакт IN1 платы драйвера двигателя ULN2003 подключен к 28BYJ48
 #define MOTOR3_PIN2 11 // Вывод IN2 платы драйвера двигателя ULN2003 подключен к 28BYJ48
@@ -84,7 +84,7 @@ void setup() {
 }
  
 void loop() {
-  Serial.println(String(hall1State) + ", " + String(hall2State) + ", " + String(hall3State));
+  //Serial.println(String(hall1State) + ", " + String(hall2State) + ", " + String(hall3State)); // Только для дебага, иначе моторы работаю медленно, т.к. нужно время для вывода значений по Serial
   if (robotState == 0) { // Состояние 0 - роботу переместиться в нелевые позиции при старте
     // Если значение датчика холла 1
     if (hall1State == LOW) {
@@ -114,7 +114,7 @@ void loop() {
       stepper3.setCurrentPosition(0); // Установить счетчик как текущую позицию. Полезно как задание нулевой координаты. Обнуляет текущую скорость до нуля
     }
     // Если все 3 датчика холла сработали
-    if (hall1State == LOW && hall2State == LOW && hall3State == LOW) { 
+    if (hall1State == HIGH && hall2State == HIGH && hall3State == HIGH) { 
       robotState = 1; // Записываем другое состояние конечного автомата
     }
   } else if (robotState == 1) { // Состояние 1
