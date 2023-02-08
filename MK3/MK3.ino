@@ -74,12 +74,12 @@ void setup() {
   attachPCINT(digitalPinToPCINT(HALL_SEN1_PIN), HallSensor1Handler, CHANGE); // Настраиваем прерывание датчика холла 1
   attachPCINT(digitalPinToPCINT(HALL_SEN2_PIN), HallSensor2Handler, CHANGE); // Настраиваем прерывание датчика холла 2
   attachPCINT(digitalPinToPCINT(HALL_SEN3_PIN), HallSensor3Handler, CHANGE); // Настраиваем прерывание датчика холла 3
-  stepper1.setMaxSpeed(1500); // Максимальная скорость двигателя 1500
-  stepper1.setAcceleration(100); // Ускорение двигателя 50
-  stepper2.setMaxSpeed(1500);
-  stepper2.setAcceleration(100);
-  stepper3.setMaxSpeed(1500);
-  stepper3.setAcceleration(100);
+  stepper1.setMaxSpeed(1300); // Максимальная скорость двигателя 1500
+  stepper1.setAcceleration(200); // Ускорение двигателя 50
+  stepper2.setMaxSpeed(1300);
+  stepper2.setAcceleration(200);
+  stepper3.setMaxSpeed(1300);
+  stepper3.setAcceleration(200);
   servo.attach(CLAW_SERVO_PIN); // Подключение серво
 }
  
@@ -89,7 +89,7 @@ void loop() {
     // Если значение датчика холла 1
     if (hall1State == LOW) {
       // Вращение манипулятора по часовой стрелке
-      stepper1.setSpeed(1500); // Установить скорость (в шагах за секунду)
+      stepper1.setSpeed(1000); // Установить скорость (в шагах за секунду)
       stepper1.runSpeed(); // Начать движение с текущей заданной скоростью (без плавного ускорения)
     } else { // Иначе выходит датчик холла 1 сработал
       stepper1.stop(); // Максимально быстрая остановка (без замедления), используя текущие параметры скорости и ускорения
@@ -98,7 +98,7 @@ void loop() {
     // Если значение датчика холла 1
     if (hall2State == LOW) {
       // Вращение манипулятора по часовой стрелке
-      stepper2.setSpeed(1500); // Установить скорость (в шагах за секунду)
+      stepper2.setSpeed(1000); // Установить скорость (в шагах за секунду)
       stepper2.runSpeed(); // Начать движение с текущей заданной скоростью (без плавного ускорения)
     } else { // Иначе выходит датчик холла 1 сработал
       stepper2.stop(); // Максимально быстрая остановка (без замедления), используя текущие параметры скорости и ускорения
@@ -107,7 +107,7 @@ void loop() {
     // Если значение датчика холла 1
     if (hall3State == LOW) {
       // Вращение манипулятора по часовой стрелке
-      stepper3.setSpeed(1500); // Установить скорость (в шагах за секунду)
+      stepper3.setSpeed(1000); // Установить скорость (в шагах за секунду)
       stepper3.runSpeed(); // Начать движение с текущей заданной скоростью (без плавного ускорения)
     } else { // Иначе выходит датчик холла 1 сработал
       stepper3.stop(); // Максимально быстрая остановка (без замедления), используя текущие параметры скорости и ускорения
