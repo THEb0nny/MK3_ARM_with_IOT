@@ -7,11 +7,18 @@
 // http://forum.amperka.ru/threads/%D0%91%D0%B8%D0%B1%D0%BB%D0%B8%D0%BE%D1%82%D0%B5%D0%BA%D0%B0-accelstepper.11388/#post-132258
 // http://www.airspayce.com/mikem/arduino/AccelStepper/index.html
 // https://github.com/NicoHood/PinChangeInterrupt
+// https://github.com/GyverLibs/TimerMs
+// https://github.com/GyverLibs/GParser
 
 #include "AccelStepper.h"
 #include "PinChangeInterrupt.h"
 #include <Servo.h>
- 
+#include <TimerMs.h>
+
+#define WIFI_SERIAL Serial3 // Serial1: пины 19(RX1) и 18(TX1); Serial2: пины 17(RX2) и 16(TX2); Serial3: пины 15(RX3) и 14(TX3)
+
+#define MAX_TAKE_VAL_AT_SERIAL 6 // Максимальное количество значений в строку монитора порта при ручном управлении
+
 // Определение метода шагового двигателя
 #define FULLSTEP 4 // Параметры полного шага
 #define HALFSTEP 8 // Параметры полушага
@@ -40,6 +47,8 @@
 
 Servo servo; // Инициализируем объект серво
 
+TimerMs tmr(2000, 1, 0); // (период, мс), (0 не запущен / 1 запущен), (режим: 0 период / 1 таймер)
+
 // Определяем объекты шагового двигателя
 AccelStepper stepper1(HALFSTEP, MOTOR1_PIN1, MOTOR1_PIN3, MOTOR1_PIN2, MOTOR1_PIN4);
 AccelStepper stepper2(HALFSTEP, MOTOR2_PIN1, MOTOR2_PIN3, MOTOR2_PIN2, MOTOR2_PIN4);
@@ -50,6 +59,8 @@ volatile byte hall2State = LOW; // Переменная для записи зн
 volatile byte hall3State = LOW; // Переменная для записи значения состояни датчика холла 3
 
 byte robotState = 0; // Переменая конечного автомата нахождения в состоянии робота
+
+int m1, m2, m3;
 
 // Функция-обработчик прерывания датчика холла 1
 void HallSensor1Handler(void) {
@@ -67,15 +78,16 @@ void HallSensor3Handler(void) {
 }
 
 void setup() {
-  Serial.begin(9600); // Инициализируем скорость передачи данных с компом
+  Serial.begin(115200); // Инициализируем скорость передачи данных с компом
+  WIFI_SERIAL.begin(115200); // Инициализируем скорость передачи данных с ESP-01
   pinMode(HALL_SEN1_PIN, INPUT_PULLUP); // Настраиваем пин с датчиком холла 1
   pinMode(HALL_SEN2_PIN, INPUT_PULLUP); // Настраиваем пин с датчиком холла 2
   pinMode(HALL_SEN3_PIN, INPUT_PULLUP); // Настраиваем пин с датчиком холла 3
   attachPCINT(digitalPinToPCINT(HALL_SEN1_PIN), HallSensor1Handler, CHANGE); // Настраиваем прерывание датчика холла 1
   attachPCINT(digitalPinToPCINT(HALL_SEN2_PIN), HallSensor2Handler, CHANGE); // Настраиваем прерывание датчика холла 2
   attachPCINT(digitalPinToPCINT(HALL_SEN3_PIN), HallSensor3Handler, CHANGE); // Настраиваем прерывание датчика холла 3
-  stepper1.setMaxSpeed(1300); // Максимальная скорость двигателя 1500
-  stepper1.setAcceleration(200); // Ускорение двигателя 50
+  stepper1.setMaxSpeed(1300); // Максимальная скорость двигателя 1300
+  stepper1.setAcceleration(200); // Ускорение двигателя 200
   stepper2.setMaxSpeed(1300);
   stepper2.setAcceleration(200);
   stepper3.setMaxSpeed(1300);
@@ -84,6 +96,42 @@ void setup() {
 }
  
 void loop() {
+  // Если приходят данные из Wi-Fi модуля - отправим их в порт компьютера
+  if (WIFI_SERIAL.available()) {
+    String inputValues[MAX_TAKE_VAL_AT_SERIAL]; // Массив входящей строки
+    String key[MAX_TAKE_VAL_AT_SERIAL]; // Массив ключей
+    int values[MAX_TAKE_VAL_AT_SERIAL]; // Массив значений
+    // Встроенная функция readStringUntil будет читать все данные, пришедшие в UART до специального символа — '\n' (перенос строки).
+    // Он появляется в паре с '\r' (возврат каретки) при передаче данных функцией Serial.println().
+    // Эти символы удобно передавать для разделения команд, но не очень удобно обрабатывать. Удаляем их функцией trim().
+    String inputStr = Serial.readStringUntil('\n');
+    inputStr.trim(); // Чистим символы
+    char strBuffer[99]; // Создаём пустой массив символов
+    inputStr.toCharArray(strBuffer, 99); // Перевести строку в массив символов последующего разделения по пробелам
+    // Считываем x и y разделённых пробелом, а также z и инструмент
+    for (byte i = 0; i < MAX_TAKE_VAL_AT_SERIAL; i++) {
+      inputValues[i] = (i == 0 ? String(strtok(strBuffer, " ")) : String(strtok(NULL, " ")));
+      inputValues[i].replace(" ", ""); // Убрать возможные пробелы между символами
+    }
+    for (byte i = 0; i < MAX_TAKE_VAL_AT_SERIAL; i++) {
+      if (inputValues[i] == "") continue; // Если значение пустое, то перейти на следующий шаг цикла
+      String inputValue = inputValues[i]; // Записываем в строку обрезанную часть пробелами
+      byte separatorIndexTmp = inputValue.indexOf("="); // Узнаём позицию знака равно
+      byte separatorIndex = (separatorIndexTmp != 255 ? separatorIndexTmp : inputValue.length());
+      key[i] = inputValue.substring(0, separatorIndex); // Записываем ключ с начала строки до знака равно
+      values[i] = (inputValue.substring(separatorIndex + 1, inputValue.length())).toInt(); // Записываем значение с начала цифры до конца строки
+      if (key[i] == "m1") {
+        m1 = values[i]; // Записываем m1
+      } else if (key[i] == "m2") {
+        m2 = values[i]; // Записываем m2
+      } else if (key[i] == "m3") {
+        m3 = values[i]; // Записываем m3
+      }
+      if (key[i].length() > 0) { // Печать ключ и значение, если ключ существует
+        Serial.println(String(key[i]) + " = " + String(values[i]));
+      }
+    }
+  }
   //Serial.println(String(hall1State) + ", " + String(hall2State) + ", " + String(hall3State)); // Только для дебага, иначе моторы работаю медленно, т.к. нужно время для вывода значений по Serial
   if (robotState == 0) { // Состояние 0 - роботу переместиться в нелевые позиции при старте
     // Если значение датчика холла 1
@@ -120,13 +168,13 @@ void loop() {
   } else if (robotState == 1) { // Состояние 1
     // Пример кода в robotState = 1 
     if (stepper1.currentPosition() == 0 && stepper2.currentPosition() == 0){
-      stepper1.moveTo(2048); // Двигатель № 1 вращается на полукруга
-      stepper2.moveTo(2048); // Двигатель № 2 вращается один раз
-      stepper3.moveTo(2048); // Двигатель № 2 вращается один раз
+      stepper1.moveTo(m1); // Двигатель № 1 вращается
+      stepper2.moveTo(m2); // Двигатель № 2 вращается
+      stepper3.moveTo(m3); // Двигатель № 2 вращается
     } else if (stepper1.currentPosition() == 2048 && stepper2.currentPosition() == 2048){
-      stepper1.moveTo(0); // Двигатель №1 вращается на полукруга
-      stepper2.moveTo(0); // Двигатель № 2 вращается один раз
-      stepper3.moveTo(0); // Двигатель № 2 вращается один раз
+      stepper1.moveTo(0); // Двигатель №1 вращается
+      stepper2.moveTo(0); // Двигатель № 2 вращается
+      stepper3.moveTo(0); // Двигатель № 2 вращается
     }
     stepper1.run(); // Двигатель 1 работает
     stepper2.run(); // Двигатель 2 работает
