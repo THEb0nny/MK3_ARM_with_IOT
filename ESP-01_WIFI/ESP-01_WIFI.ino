@@ -9,7 +9,8 @@
 
 GyverPortal ui;
 
-int m1_val = 0, m2_val = 0, m3_val = 0;
+int j1_val = 0, j2_val = 0, j3_val = 0;
+int x_val = 0, y_val = 0, z_val = 0;
 
 void build() {
   GP.BUILD_BEGIN();
@@ -20,14 +21,18 @@ void build() {
   GP.HR();
 
   M_BLOCK_TAB(
-    "Control",
+    "Joints control",
+    M_BOX(GP.LABEL("Slider J1"); GP.SLIDER("j1_input_slider", j1_val, 0, 1000); );
+    M_BOX(GP.LABEL("Slider J2"); GP.SLIDER("j2_input_slider", j2_val, 0, 1000); );
+    M_BOX(GP.LABEL("Slider J3"); GP.SLIDER("j3_input_slider", j3_val, 0, 1000); );
+  );
+
+  M_BLOCK_TAB(
+    "IK control",
     GP.LABEL("Inputs");
-    M_BOX(GP.LABEL("Pos stepper 1"); GP.NUMBER("m1_input_num", "number", m1_val); );
-    M_BOX(GP.LABEL("Pos stepper 2"); GP.NUMBER("m2_input_num", "number", m2_val); );
-    M_BOX(GP.LABEL("Pos stepper 3"); GP.NUMBER("m3_input_num", "number", m3_val); );
-    M_BOX(GP.LABEL("Slider Stepper 1"); GP.SLIDER("m1_input_slider_num", m1_val, 0, 1000); );
-    M_BOX(GP.LABEL("Slider Stepper 2"); GP.SLIDER("m2_input_slider_num", m2_val, 0, 1000); );
-    M_BOX(GP.LABEL("Slider Stepper 3"); GP.SLIDER("m3_input_slider_num", m3_val, 0, 1000); );
+    M_BOX(GP.LABEL("x"); GP.NUMBER("ik_x", "number", x_val); );
+    M_BOX(GP.LABEL("y"); GP.NUMBER("ik_y", "number", y_val); );
+    M_BOX(GP.LABEL("z"); GP.NUMBER("ik_z", "number", z_val); );
   );
 
   GP.BUTTON("send_btn", "Send");
@@ -56,16 +61,30 @@ void setup() {
 void action() {
   if (ui.click()) {
     // Проверяем компоненты и обновляем переменные
-    if (ui.clickInt("m1_input_num", m1_val)) {
-      Serial.print("Number: ");
-      Serial.println(m1_val);
+    if (ui.clickInt("j1_input_slider", j1_val)) {
+      Serial.print("J1: ");
+      Serial.println(j1_val);
     }
-
-    if (ui.clickInt("m1_input_slider_num", m1_val)) {
-      Serial.print("Slider: ");
-      Serial.println(m1_val);
+    if (ui.clickInt("j2_input_slider", j2_val)) {
+      Serial.print("J2: ");
+      Serial.println(j2_val);
     }
-
+    if (ui.clickInt("m3_input_slider", j3_val)) {
+      Serial.print("J3: ");
+      Serial.println(j3_val);
+    }
+    if (ui.clickInt("ik_x", x_val)) {
+      Serial.print("X: ");
+      Serial.println(x_val);
+    }
+    if (ui.clickInt("ik_y", y_val)) {
+      Serial.print("Y: ");
+      Serial.println(y_val);
+    }
+    if (ui.clickInt("ik_z", z_val)) {
+      Serial.print("Z: ");
+      Serial.println(z_val);
+    }
     if (ui.click("send_btn")) {
       Serial.println("Button click");
     }
