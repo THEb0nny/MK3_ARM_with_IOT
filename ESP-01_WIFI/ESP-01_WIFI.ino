@@ -2,8 +2,8 @@
 // https://github.com/GyverLibs/GyverPortal/blob/main/examples/demos/actionClick/actionClick.ino
 // https://github.com/GyverLibs/GyverPortal/tree/main/examples/demos/demoAllComponents
 
-#define AP_SSID "freetime"
-#define AP_PASS ""
+#define AP_SSID "dimdimdim"
+#define AP_PASS "08001800"
 
 #include <GyverPortal.h>
 
@@ -17,14 +17,14 @@ void build() {
   //GP.THEME(GP_DARK);
   GP.THEME(GP_LIGHT);
 
-  GP.TITLE("MK3 Conrol Dashboard");
+  GP.TITLE("MK3 Control Dashboard");
   GP.HR();
 
   M_BLOCK_TAB(
     "Joints control",
-    M_BOX(GP.LABEL("Slider J1"); GP.SLIDER("j1_input_slider", j1_val, 0, 1000); );
-    M_BOX(GP.LABEL("Slider J2"); GP.SLIDER("j2_input_slider", j2_val, 0, 1000); );
-    M_BOX(GP.LABEL("Slider J3"); GP.SLIDER("j3_input_slider", j3_val, 0, 1000); );
+    M_BOX(GP.LABEL("Slider J1"); GP.SLIDER("j1", j1_val, 0, 1000); );
+    M_BOX(GP.LABEL("Slider J2"); GP.SLIDER("j2", j2_val, 0, 1000); );
+    M_BOX(GP.LABEL("Slider J3"); GP.SLIDER("j3", j3_val, 0, 1000); );
   );
 
   M_BLOCK_TAB(
@@ -61,15 +61,15 @@ void setup() {
 void action() {
   if (ui.click()) {
     // Проверяем компоненты и обновляем переменные
-    if (ui.clickInt("j1_input_slider", j1_val)) {
+    if (ui.clickInt("j1", j1_val)) {
       Serial.print("J1: ");
       Serial.println(j1_val);
     }
-    if (ui.clickInt("j2_input_slider", j2_val)) {
+    if (ui.clickInt("j2", j2_val)) {
       Serial.print("J2: ");
       Serial.println(j2_val);
     }
-    if (ui.clickInt("m3_input_slider", j3_val)) {
+    if (ui.clickInt("j3", j3_val)) {
       Serial.print("J3: ");
       Serial.println(j3_val);
     }
