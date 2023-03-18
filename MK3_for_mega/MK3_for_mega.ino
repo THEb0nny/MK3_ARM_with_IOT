@@ -22,6 +22,9 @@
 // Определение метода шагового двигателя
 #define FULLSTEP 4 // Параметры полного шага
 #define HALFSTEP 8 // Параметры полушага
+
+#define STEPS_PER_REVOLUTION = 4096 // Шагов за один оборот, 4096 если HALFSTEP, а если FULLSTEP - 2048
+#define ANGLE_PER_STEP = 360 / STEPS_PER_REVOLUTION // Угол за один шаг
  
 // Определение контактов шагового двигателя
 #define MOTOR1_PIN1 33 // Контакт IN1 платы драйвера двигателя ULN2003 подключен к 28BYJ48
@@ -61,6 +64,8 @@ volatile byte hall3State = LOW; // Переменная для записи зн
 byte robotState = 0; // Переменая конечного автомата нахождения в состоянии робота
 
 int m1, m2, m3;
+int m1Prev, m2Prev, m3Prev;
+float m1StepPos, m2StepPos, m3StepPos;
 
 // Функция-обработчик прерывания датчика холла 1
 void HallSensor1Handler(void) {
@@ -94,8 +99,8 @@ void setup() {
   stepper3.setAcceleration(200);
   servo.attach(CLAW_SERVO_PIN); // Подключение серво
 }
- 
-void loop() {
+
+void ReadFromWiFiSerial() {
   // Если приходят данные из Wi-Fi модуля - отправим их в порт компьютера
   if (WIFI_SERIAL.available()) {
     String inputValues[MAX_TAKE_VAL_AT_SERIAL]; // Массив входящей строки
@@ -132,32 +137,40 @@ void loop() {
       }
     }
   }
+}
+ 
+void loop() {
+  ReadFromWiFiSerial(); // Считываем заначения из Serial
+  
   //Serial.println(String(hall1State) + ", " + String(hall2State) + ", " + String(hall3State)); // Только для дебага, иначе моторы работаю медленно, т.к. нужно время для вывода значений по Serial
+  
   if (robotState == 0) { // Состояние 0 - роботу переместиться в нелевые позиции при старте
+    // Установить скорость (в шагах за секунду)
+    stepper1.setSpeed(1000);
+    stepper2.setSpeed(1000);
+    stepper3.setSpeed(1000);
     // Если значение датчика холла 1
     if (hall1State == LOW) {
       // Вращение манипулятора по часовой стрелке
-      stepper1.setSpeed(1000); // Установить скорость (в шагах за секунду)
+      //stepper1.setSpeed(1000); // Установить скорость (в шагах за секунду)
       stepper1.runSpeed(); // Начать движение с текущей заданной скоростью (без плавного ускорения)
     } else { // Иначе выходит датчик холла 1 сработал
       stepper1.stop(); // Максимально быстрая остановка (без замедления), используя текущие параметры скорости и ускорения
       stepper1.setCurrentPosition(0); // Установить счетчик как текущую позицию. Полезно как задание нулевой координаты. Обнуляет текущую скорость до нуля
     }
-    // Если значение датчика холла 1
+    // Если значение датчика холла 2
     if (hall2State == LOW) {
-      // Вращение манипулятора по часовой стрелке
-      stepper2.setSpeed(1000); // Установить скорость (в шагах за секунду)
+      //stepper2.setSpeed(1000); // Установить скорость (в шагах за секунду)
       stepper2.runSpeed(); // Начать движение с текущей заданной скоростью (без плавного ускорения)
-    } else { // Иначе выходит датчик холла 1 сработал
+    } else { // Иначе выходит датчик холла 2 сработал
       stepper2.stop(); // Максимально быстрая остановка (без замедления), используя текущие параметры скорости и ускорения
       stepper2.setCurrentPosition(0); // Установить счетчик как текущую позицию. Полезно как задание нулевой координаты. Обнуляет текущую скорость до нуля
     }
-    // Если значение датчика холла 1
+    // Если значение датчика холла 3
     if (hall3State == LOW) {
-      // Вращение манипулятора по часовой стрелке
-      stepper3.setSpeed(1000); // Установить скорость (в шагах за секунду)
+      //stepper3.setSpeed(1000); // Установить скорость (в шагах за секунду)
       stepper3.runSpeed(); // Начать движение с текущей заданной скоростью (без плавного ускорения)
-    } else { // Иначе выходит датчик холла 1 сработал
+    } else { // Иначе выходит датчик холла 3 сработал
       stepper3.stop(); // Максимально быстрая остановка (без замедления), используя текущие параметры скорости и ускорения
       stepper3.setCurrentPosition(0); // Установить счетчик как текущую позицию. Полезно как задание нулевой координаты. Обнуляет текущую скорость до нуля
     }
@@ -165,20 +178,32 @@ void loop() {
     if (hall1State == HIGH && hall2State == HIGH && hall3State == HIGH) { 
       robotState = 1; // Записываем другое состояние конечного автомата
     }
-  } else if (robotState == 1) { // Состояние 1
-    // Пример кода в robotState = 1 
-    if (stepper1.currentPosition() == 0 && stepper2.currentPosition() == 0){
-      stepper1.moveTo(m1); // Двигатель № 1 вращается
-      stepper2.moveTo(m2); // Двигатель № 2 вращается
-      stepper3.moveTo(m3); // Двигатель № 2 вращается
-    } else if (stepper1.currentPosition() == 2048 && stepper2.currentPosition() == 2048){
-      stepper1.moveTo(0); // Двигатель №1 вращается
-      stepper2.moveTo(0); // Двигатель № 2 вращается
-      stepper3.moveTo(0); // Двигатель № 2 вращается
+  } else if (robotState == 1) { // Состояние 1 - ожидание новых значений для поворота
+    // Проверяем изменились ли состояния переменных на новые
+    if (m1 != m1Prev || m2 != m2Prev || m3 != m3Prev) {
+      // Переводим градусы в шаги для шаговиков
+      m1StepPos = DegToStep(m1);
+      m2StepPos = DegToStep(m2);
+      m3StepPos = DegToStep(m3);
+      robotState = 2; // Переводим в состояние перемещения
     }
-    stepper1.run(); // Двигатель 1 работает
-    stepper2.run(); // Двигатель 2 работает
-    stepper3.run(); // Двигатель 3 работает
+  } else if (robotState == 2) { // Состояние 2 - перемещения моторов в новую позицию
+    if (stepper1.currentPosition() == m1StepPos) { // Работает пока не достиг угла
+      // Установить двигателям позицию для вращения
+      stepper1.moveTo(m1StepPos);
+      //stepper2.moveTo(m2StepPos);
+      //stepper3.moveTo(m3StepPos);
+      // Работать двигателям
+      stepper1.run();
+      //stepper2.run();
+      //stepper3.run();
+    } else { // Достиг позиции
+      // Останавливаем шаговики
+      stepper1.stop();
+      stepper2.stop();
+      stepper3.stop();
+      robotState = 1; // Переключаем в состояние ожидания новых значений
+    }
   }
   // Нельзя тут использовать delay, т.к. будет блокироваться запуск шаговика run или runSpeed
   /*
@@ -187,4 +212,9 @@ void loop() {
   servo.write(0);
   delay(1000);
   */
+}
+
+// Перевод градусов в шаги
+float DegToStep(float deg) {
+  return deg / ANGLE_PER_STEP;
 }
