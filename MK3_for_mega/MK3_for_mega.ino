@@ -8,7 +8,7 @@
 // http://www.airspayce.com/mikem/arduino/AccelStepper/index.html
 // https://github.com/NicoHood/PinChangeInterrupt
 // https://github.com/GyverLibs/TimerMs
-// https://github.com/GyverLibs/GParser
+// https://lastminuteengineers.com/28byj48-stepper-motor-arduino-tutorial/
 
 #include "AccelStepper.h"
 #include "PinChangeInterrupt.h"
@@ -22,8 +22,9 @@
 // Определение метода шагового двигателя
 #define FULLSTEP 4 // Параметры полного шага
 #define HALFSTEP 8 // Параметры полушага
+#define STEPMODE HALFSTEP // Выбранный режим шага
 
-#define STEPS_PER_REVOLUTION 4096 // Шагов за один оборот, 4096 если HALFSTEP, а если FULLSTEP - 2048
+#define STEPS_PER_REVOLUTION (STEPMODE == 4 ? 2048 : 4096) // Шагов за один оборот, 4096 если HALFSTEP, а если FULLSTEP - 2048
 #define ANGLE_PER_STEP 360 / STEPS_PER_REVOLUTION // Угол за один шаг
  
 // Определение контактов шагового двигателя
@@ -53,9 +54,9 @@ Servo servo; // Инициализируем объект серво
 TimerMs tmr(2000, 1, 0); // (период, мс), (0 не запущен / 1 запущен), (режим: 0 период / 1 таймер)
 
 // Определяем объекты шагового двигателя
-AccelStepper stepper1(HALFSTEP, MOTOR1_PIN1, MOTOR1_PIN3, MOTOR1_PIN2, MOTOR1_PIN4);
-AccelStepper stepper2(HALFSTEP, MOTOR2_PIN1, MOTOR2_PIN3, MOTOR2_PIN2, MOTOR2_PIN4);
-AccelStepper stepper3(HALFSTEP, MOTOR3_PIN1, MOTOR3_PIN3, MOTOR3_PIN2, MOTOR3_PIN4);
+AccelStepper stepper1(STEPMODE, MOTOR1_PIN1, MOTOR1_PIN3, MOTOR1_PIN2, MOTOR1_PIN4);
+AccelStepper stepper2(STEPMODE, MOTOR2_PIN1, MOTOR2_PIN3, MOTOR2_PIN2, MOTOR2_PIN4);
+AccelStepper stepper3(STEPMODE, MOTOR3_PIN1, MOTOR3_PIN3, MOTOR3_PIN2, MOTOR3_PIN4);
 
 volatile byte hall1State = LOW; // Переменная для записи значения состояни датчика холла 1
 volatile byte hall2State = LOW; // Переменная для записи значения состояни датчика холла 2
@@ -98,47 +99,6 @@ void setup() {
   stepper3.setMaxSpeed(1300);
   stepper3.setAcceleration(200);
   servo.attach(CLAW_SERVO_PIN); // Подключение серво
-}
-
-void ReadFromWiFiSerial() {
-  // Если приходят данные из Wi-Fi модуля - отправим их в порт компьютера
-  if (WIFI_SERIAL.available()) {
-    String inputValues[MAX_TAKE_VAL_AT_SERIAL]; // Массив входящей строки
-    String key[MAX_TAKE_VAL_AT_SERIAL]; // Массив ключей
-    int values[MAX_TAKE_VAL_AT_SERIAL]; // Массив значений
-    // Встроенная функция readStringUntil будет читать все данные, пришедшие в UART до специального символа — '\n' (перенос строки).
-    // Он появляется в паре с '\r' (возврат каретки) при передаче данных функцией Serial.println().
-    // Эти символы удобно передавать для разделения команд, но не очень удобно обрабатывать. Удаляем их функцией trim().
-    String inputStr = Serial.readStringUntil('\n');
-    inputStr.trim(); // Чистим символы
-    char strBuffer[99]; // Создаём пустой массив символов
-    inputStr.toCharArray(strBuffer, 99); // Перевести строку в массив символов последующего разделения по пробелам
-    // Считываем x и y разделённых пробелом, а также z и инструмент
-    for (byte i = 0; i < MAX_TAKE_VAL_AT_SERIAL; i++) {
-      inputValues[i] = (i == 0 ? String(strtok(strBuffer, " ")) : String(strtok(NULL, " ")));
-      inputValues[i].replace(" ", ""); // Убрать возможные пробелы между символами
-    }
-    for (byte i = 0; i < MAX_TAKE_VAL_AT_SERIAL; i++) {
-      if (inputValues[i] == "") continue; // Если значение пустое, то перейти на следующий шаг цикла
-      String inputValue = inputValues[i]; // Записываем в строку обрезанную часть пробелами
-      byte separatorIndexTmp = inputValue.indexOf("="); // Узнаём позицию знака равно
-      byte separatorIndex = (separatorIndexTmp != 255 ? separatorIndexTmp : inputValue.length());
-      key[i] = inputValue.substring(0, separatorIndex); // Записываем ключ с начала строки до знака равно
-      values[i] = (inputValue.substring(separatorIndex + 1, inputValue.length())).toInt(); // Записываем значение с начала цифры до конца строки
-      if (key[i] == "m1") {
-        m1 = values[i]; // Записываем m1
-      } else if (key[i] == "m2") {
-        m2 = values[i]; // Записываем m2
-      } else if (key[i] == "m3") {
-        m3 = values[i]; // Записываем m3
-      } else if (key[i] == "claw") {
-        claw = values[i]; // Записываем m3
-      }
-      if (key[i].length() > 0) { // Печать ключ и значение, если ключ существует
-        Serial.println(String(key[i]) + " = " + String(values[i]));
-      }
-    }
-  }
 }
  
 void loop() {
@@ -190,7 +150,7 @@ void loop() {
       robotState = 2; // Переводим в состояние перемещения
     }
   } else if (robotState == 2) { // Состояние 2 - перемещения моторов в новую позицию
-    if (stepper1.currentPosition() == m1StepPos) { // Работает пока не достиг угла
+    if (stepper1.currentPosition() != m1StepPos) { // Работает пока не достиг угла
       // Установить двигателям позицию для вращения
       stepper1.moveTo(m1StepPos);
       //stepper2.moveTo(m2StepPos);
@@ -219,7 +179,49 @@ void loop() {
   // Нельзя тут использовать delay, т.к. будет блокироваться запуск шаговика run или runSpeed
 }
 
+void ReadFromWiFiSerial() {
+  // Если приходят данные из Wi-Fi модуля - отправим их в порт компьютера
+  if (WIFI_SERIAL.available()) {
+    String inputValues[MAX_TAKE_VAL_AT_SERIAL]; // Массив входящей строки
+    String key[MAX_TAKE_VAL_AT_SERIAL]; // Массив ключей
+    int values[MAX_TAKE_VAL_AT_SERIAL]; // Массив значений
+    // Встроенная функция readStringUntil будет читать все данные, пришедшие в UART до специального символа — '\n' (перенос строки).
+    // Он появляется в паре с '\r' (возврат каретки) при передаче данных функцией Serial.println().
+    // Эти символы удобно передавать для разделения команд, но не очень удобно обрабатывать. Удаляем их функцией trim().
+    String inputStr = WIFI_SERIAL.readStringUntil('\n');
+    inputStr.trim(); // Чистим символы
+    char strBuffer[99]; // Создаём пустой массив символов
+    inputStr.toCharArray(strBuffer, 99); // Перевести строку в массив символов последующего разделения по пробелам
+    // Считываем x и y разделённых пробелом, а также z и инструмент
+    for (byte i = 0; i < MAX_TAKE_VAL_AT_SERIAL; i++) {
+      inputValues[i] = (i == 0 ? String(strtok(strBuffer, " ")) : String(strtok(NULL, " ")));
+      inputValues[i].replace(" ", ""); // Убрать возможные пробелы между символами
+    }
+    for (byte i = 0; i < MAX_TAKE_VAL_AT_SERIAL; i++) {
+      if (inputValues[i] == "") continue; // Если значение пустое, то перейти на следующий шаг цикла
+      String inputValue = inputValues[i]; // Записываем в строку обрезанную часть пробелами
+      byte separatorIndexTmp = inputValue.indexOf("="); // Узнаём позицию знака равно
+      byte separatorIndex = (separatorIndexTmp != 255 ? separatorIndexTmp : inputValue.length());
+      key[i] = inputValue.substring(0, separatorIndex); // Записываем ключ с начала строки до знака равно
+      values[i] = (inputValue.substring(separatorIndex + 1, inputValue.length())).toInt(); // Записываем значение с начала цифры до конца строки
+      if (key[i] == "m1") {
+        m1 = values[i]; // Записываем m1
+      } else if (key[i] == "m2") {
+        m2 = values[i]; // Записываем m2
+      } else if (key[i] == "m3") {
+        m3 = values[i]; // Записываем m3
+      } else if (key[i] == "claw") {
+        claw = values[i]; // Записываем m3
+      }
+      if (key[i].length() > 0) { // Печать ключ и значение, если ключ существует
+        Serial.println(String(key[i]) + " = " + String(values[i]));
+      }
+    }
+  }
+}
+
 // Перевод градусов в шаги
 float DegToStep(float deg) {
-  return deg / ANGLE_PER_STEP;
+  float steps = deg / ((float) ANGLE_PER_STEP);
+  return steps;
 }
