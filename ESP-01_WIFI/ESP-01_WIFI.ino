@@ -62,15 +62,15 @@ void action() {
   if (ui.click()) {
     // Проверяем компоненты и обновляем переменные
     if (ui.clickInt("j1", j1_val)) {
-      Serial.print("J1: ");
+      Serial.print("j1: ");
       Serial.println(j1_val);
     }
     if (ui.clickInt("j2", j2_val)) {
-      Serial.print("J2: ");
+      Serial.print("j2: ");
       Serial.println(j2_val);
     }
     if (ui.clickInt("j3", j3_val)) {
-      Serial.print("J3: ");
+      Serial.print("j3: ");
       Serial.println(j3_val);
     }
     if (ui.clickInt("ik_x", x_val)) {
