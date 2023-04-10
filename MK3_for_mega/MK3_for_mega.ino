@@ -17,7 +17,7 @@
 
 #define WIFI_SERIAL Serial3 // Serial1: пины 19(RX1) и 18(TX1); Serial2: пины 17(RX2) и 16(TX2); Serial3: пины 15(RX3) и 14(TX3)
 
-#define MAX_TAKE_VAL_AT_SERIAL 6 // Максимальное количество значений в строку монитора порта при ручном управлении
+#define MAX_TAKE_VAL_AT_SERIAL 7 // Максимальное количество значений в строку монитора порта при ручном управлении
 
 // Определение метода шагового двигателя
 #define FULLSTEP 4 // Параметры полного шага
@@ -64,9 +64,9 @@ volatile byte hall3State = LOW; // Переменная для записи зн
 
 byte robotState = 0; // Переменая конечного автомата нахождения в состоянии робота
 
-int m1, m2, m3, claw;
-int m1Prev, m2Prev, m3Prev, clawPrev;
-int m1StepPos, m2StepPos, m3StepPos;
+int j1, j2, j3, claw;
+int j1Prev, j2Prev, j3Prev, clawPrev;
+int j1StepPos, j2StepPos, j3StepPos;
 
 // Функция-обработчик прерывания датчика холла 1
 void HallSensor1Handler(void) {
@@ -103,16 +103,12 @@ void setup() {
  
 void loop() {
   if (robotState == 1) ReadFromWiFiSerial(); // Считываем заначения из Serial только при состоянии ожидания считывания новых значений
-  //Serial.println(String(hall1State) + ", " + String(hall2State) + ", " + String(hall3State)); // Только для дебага, иначе моторы работаю медленно, т.к. нужно время для вывода значений по Serial
   if (robotState == 0) { // Состояние 0 - роботу переместиться в нелевые позиции при старте
     // Установить скорость (в шагах за секунду)
-    stepper1.setSpeed(1000);
-    stepper2.setSpeed(1000);
-    stepper3.setSpeed(1000);
     // Если значение датчика холла 1
     if (hall1State == LOW) {
       // Вращение манипулятора по часовой стрелке
-      //stepper1.setSpeed(1000); // Установить скорость (в шагах за секунду)
+      stepper1.setSpeed(1000); // Установить скорость (в шагах за секунду)
       stepper1.runSpeed(); // Начать движение с текущей заданной скоростью (без плавного ускорения)
     } else if (stepper1.isRunning()) { // Иначе выходит датчик холла 1 сработал и если двигатель вращался, тогда однократно остановить его
       stepper1.stop(); // Максимально быстрая остановка (без замедления), используя текущие параметры скорости и ускорения
@@ -120,7 +116,7 @@ void loop() {
     }
     // Если значение датчика холла 2
     if (hall2State == LOW) {
-      //stepper2.setSpeed(1000); // Установить скорость (в шагах за секунду)
+      stepper2.setSpeed(1000); // Установить скорость (в шагах за секунду)
       stepper2.runSpeed(); // Начать движение с текущей заданной скоростью (без плавного ускорения)
     } else if (stepper2.isRunning()) { // Иначе выходит датчик холла 2 сработал и если двигатель вращался, тогда однократно остановить его
       stepper2.stop(); // Максимально быстрая остановка (без замедления), используя текущие параметры скорости и ускорения
@@ -128,7 +124,7 @@ void loop() {
     }
     // Если значение датчика холла 3
     if (hall3State == LOW) {
-      //stepper3.setSpeed(1000); // Установить скорость (в шагах за секунду)
+      stepper3.setSpeed(1000); // Установить скорость (в шагах за секунду)
       stepper3.runSpeed(); // Начать движение с текущей заданной скоростью (без плавного ускорения)
     } else if (stepper3.isRunning()) { // Иначе выходит датчик холла 3 сработал и если двигатель вращался, тогда однократно остановить его
       stepper3.stop(); // Максимально быстрая остановка (без замедления), используя текущие параметры скорости и ускорения
@@ -137,56 +133,60 @@ void loop() {
     // Если все 3 датчика холла сработали
     if (hall1State == HIGH && hall2State == HIGH && hall3State == HIGH) {
       robotState = 1; // Записываем другое состояние конечного автомата
-      Serial.print("robotState: ");
-      Serial.println(robotState);
+      Serial.print("robotState: 1");
     }
   } else if (robotState == 1) { // Состояние 1 - ожидание новых значений для перемещения
     // Проверяем изменились ли состояния переменных на новые
-    if (m1 != m1Prev || m2 != m2Prev || m3 != m3Prev) {
+    if (j1 != j1Prev || j2 != j2Prev || j3 != j3Prev || claw != clawPrev) {
       // Переводим градусы в шаги для шаговиков
-      m1StepPos = DegToStep(m1);
-      m2StepPos = DegToStep(m2);
-      m3StepPos = DegToStep(m3);
+      j1StepPos = DegToStep(j1);
+      j2StepPos = DegToStep(j2);
+      j3StepPos = DegToStep(j3);
       robotState = 2; // Переводим в состояние перемещения
-      Serial.print("robotState: ");
-      Serial.println(robotState);
+      Serial.print("robotState: 2");
     }
   } else if (robotState == 2) { // Состояние 2 - перемещения моторов в новую позицию
-    if (stepper1.currentPosition() != m1StepPos) { // Шаговик 1 работает пока не достиг позицию
-      stepper1.moveTo(m1StepPos); // Установить двигателю позицию для вращения
+    if (stepper1.currentPosition() != j1StepPos) { // Шаговик 1 работает пока не достиг позицию
+      stepper1.moveTo(j1StepPos); // Установить двигателю позицию для вращения
       stepper1.run(); // Работать двигателю
     } else { // Достиг позиции
       stepper1.stop(); // Останавливаем шаговик
-      m1Prev = m1; // Перезаписывем переменные о значениях, которые были выполнены в последний раз
+      j1Prev = j1; // Перезаписывем переменные о значениях, которые были выполнены в последний раз
     }
-    if (stepper2.currentPosition() != m2StepPos) { // Шаговик 2 работает пока не достиг позицию
-      stepper2.moveTo(m2StepPos); // Установить двигателю позицию для вращения
+    if (stepper2.currentPosition() != j2StepPos) { // Шаговик 2 работает пока не достиг позицию
+      stepper2.moveTo(j2StepPos); // Установить двигателю позицию для вращения
       stepper2.run(); // Работать двигателю
     } else { // Достиг позиции
       stepper2.stop(); // Останавливаем шаговик
-      m2Prev = m2; // Перезаписывем переменные о значениях, которые были выполнены в последний раз
+      j2Prev = j2; // Перезаписывем переменные о значениях, которые были выполнены в последний раз
     }
-    if (stepper3.currentPosition() != m3StepPos) { // Шаговик 3 работает пока не достиг позицию
-      stepper3.moveTo(m3StepPos); // Установить двигателю позицию для вращения
+    if (stepper3.currentPosition() != j3StepPos) { // Шаговик 3 работает пока не достиг позицию
+      stepper3.moveTo(j3StepPos); // Установить двигателю позицию для вращения
       stepper3.run(); // Работать двигателю
     } else { // Достиг позиции
       stepper3.stop(); // Останавливаем шаговик
-      m3Prev = m3; // Перезаписывем переменные о значениях, которые были выполнены в последний раз
+      j3Prev = j3; // Перезаписывем переменные о значениях, которые были выполнены в последний раз
     }
-    if (stepper1.currentPosition() != m1StepPos && stepper2.currentPosition() != m2StepPos && stepper3.currentPosition() != m3StepPos) {
+    if (stepper1.currentPosition() == j1StepPos && stepper2.currentPosition() == j2StepPos && stepper3.currentPosition() == j3StepPos) {
       if (claw != clawPrev) { // Если новое значение не равно старому
         servo.write(claw); // Повернуться серво
         delay(100); // Задержка
         clawPrev = claw; // Записать новое значение положения, которое было в последний раз
       }
       robotState = 1; // Переключаем в состояние ожидания новых значений
-      Serial.print("robotState: ");
-      Serial.println(robotState);
+      Serial.print("robotState: 1");
     }
   }
   // Нельзя тут использовать delay, т.к. будет блокироваться запуск шаговика run или runSpeed
 }
 
+// Перевод градусов в шаги
+float DegToStep(float deg) {
+  float steps = deg / ((float) ANGLE_PER_STEP);
+  return steps;
+}
+
+// Функция считывания значений по Serial от WI-FI модуля
 void ReadFromWiFiSerial() {
   // Если приходят данные из Wi-Fi модуля - отправим их в порт компьютера
   if (WIFI_SERIAL.available()) {
@@ -213,23 +213,17 @@ void ReadFromWiFiSerial() {
       key[i] = inputValue.substring(0, separatorIndex); // Записываем ключ с начала строки до знака равно
       values[i] = (inputValue.substring(separatorIndex + 1, inputValue.length())).toInt(); // Записываем значение с начала цифры до конца строки
       if (key[i] == "j1") {
-        m1 = values[i]; // Записываем m1
+        j1 = values[i]; // Записываем j1
       } else if (key[i] == "j2") {
-        m2 = values[i]; // Записываем m2
+        j2 = values[i]; // Записываем j2
       } else if (key[i] == "j3") {
-        m3 = values[i]; // Записываем m3
-      } else if (key[i] == "claw") {
-        claw = values[i]; // Записываем m3
+        j3 = values[i]; // Записываем j3
+      } else if (key[i] == "jServo") {
+        claw = values[i]; // Записываем servo
       }
       if (key[i].length() > 0) { // Печать ключ и значение, если ключ существует
         Serial.println(String(key[i]) + " = " + String(values[i]));
       }
     }
   }
-}
-
-// Перевод градусов в шаги
-float DegToStep(float deg) {
-  float steps = deg / ((float) ANGLE_PER_STEP);
-  return steps;
 }
