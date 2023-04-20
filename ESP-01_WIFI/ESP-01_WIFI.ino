@@ -12,10 +12,11 @@ GyverPortal ui; // Создаём объект интерфейса
 int j1_pos_val = 0, j2_pos_val = 0, j3_pos_val = 0, claw_pos_val = 90;
 int j1_speed_val = 0, j2_speed_val = 0, j3_speed_val = 0;
 int j1_accel_val = 0, j2_accel_val = 0, j3_accel_val = 0;
-int x_val = 0, y_val = 0, z_val = 0;
 bool j1_val_upd, j2_val_upd, j3_val_upd, claw_pos_val_upd;
 bool j1_speed_val_upd, j2_speed_val_upd, j3_speed_val_upd;
 bool j1_accel_val_upd, j2_accel_val_upd, j3_accel_val_upd;
+
+int x_val = 0, y_val = 0, z_val = 0;
 bool x_val_upd, y_val_upd, z_val_upd;
 
 void build() {
@@ -33,7 +34,7 @@ void build() {
     M_BOX(GP.LABEL("Slider J1 degress"); GP.SLIDER("j1_pos_val", j1_pos_val, 0, 360); );
     M_BOX(GP.LABEL("Slider J2 degress"); GP.SLIDER("j2_pos_val", j2_pos_val, 0, 360); );
     M_BOX(GP.LABEL("Slider J3 degress"); GP.SLIDER("j3_pos_val", j3_pos_val, 0, 360); );
-    M_BOX(GP.LABEL("Slider CLAW POSITION"); GP.SLIDER("claw_pos_val", claw_pos_val, 0, 180); );
+    M_BOX(GP.LABEL("Slider claw pos"); GP.SLIDER("claw_pos_val", claw_pos_val, 0, 180); );
   );
 
   M_BLOCK_TAB(
@@ -66,9 +67,8 @@ void setup() {
   WiFi.begin(AP_SSID, AP_PASS);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
   }
-  Serial.println();
+  //Serial.println();
   Serial.println(WiFi.localIP());
 
   // Подключаем конструктор и запускаем
