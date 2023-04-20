@@ -69,9 +69,10 @@ volatile byte hall3State = LOW; // Переменная для записи зн
 
 byte robotState = 0; // Переменая конечного автомата нахождения в состоянии робота
 
+int j1_speed = STEPPER_DEFAULT_SPEED, j2_speed = STEPPER_DEFAULT_SPEED, j3_speed = STEPPER_DEFAULT_SPEED;
 int j1_step_pos, j2_step_pos, j3_step_pos;
 int j1_deg_pos, j2_deg_pos, j3_deg_pos, claw_pos;
-int j1_step_prev, j2_step_prev, j3_step_prev, claw_pos_prev;
+int j1_deg_prev, j2_deg_prev, j3_deg_prev, claw_pos_prev;
 
 // Функция-обработчик прерывания датчика холла 1
 void HallSensor1Handler(void) {
@@ -97,10 +98,13 @@ void setup() {
   attachPCINT(digitalPinToPCINT(HALL_SEN1_PIN), HallSensor1Handler, CHANGE); // Настраиваем прерывание датчика холла 1
   attachPCINT(digitalPinToPCINT(HALL_SEN2_PIN), HallSensor2Handler, CHANGE); // Настраиваем прерывание датчика холла 2
   attachPCINT(digitalPinToPCINT(HALL_SEN3_PIN), HallSensor3Handler, CHANGE); // Настраиваем прерывание датчика холла 3
+  stepper1.setSpeed(STEPPER_DEFAULT_ACCEL); // Записываем скорость j1
   stepper1.setMaxSpeed(STEPPER_MAX_SPEED); // Максимальная скорость двигателя
   stepper1.setAcceleration(STEPPER_DEFAULT_ACCEL); // Ускорение двигателя
+  stepper2.setSpeed(STEPPER_DEFAULT_ACCEL);
   stepper2.setMaxSpeed(STEPPER_MAX_SPEED);
   stepper2.setAcceleration(STEPPER_DEFAULT_ACCEL);
+  stepper3.setSpeed(STEPPER_DEFAULT_ACCEL);
   stepper3.setMaxSpeed(STEPPER_MAX_SPEED);
   stepper3.setAcceleration(STEPPER_DEFAULT_ACCEL);
   servo.attach(CLAW_SERVO_PIN); // Подключение серво
@@ -113,7 +117,7 @@ void loop() {
     // Если значение датчика холла 1
     if (hall1State == LOW) {
       // Вращение манипулятора по часовой стрелке
-      stepper1.setSpeed(STEPPER_DEFAULT_SPEED); // Установить скорость (в шагах за секунду)
+      stepper1.setSpeed(j1_speed); // Установить скорость (в шагах за секунду)
       stepper1.runSpeed(); // Начать движение с текущей заданной скоростью (без плавного ускорения)
     } else if (stepper1.isRunning()) { // Иначе выходит датчик холла 1 сработал и если двигатель вращался, тогда однократно остановить его
       stepper1.stop(); // Максимально быстрая остановка (без замедления), используя текущие параметры скорости и ускорения
@@ -121,7 +125,7 @@ void loop() {
     }
     // Если значение датчика холла 2
     if (hall2State == LOW) {
-      stepper2.setSpeed(-STEPPER_DEFAULT_SPEED); // Установить скорость (в шагах за секунду)
+      stepper2.setSpeed(-j2_speed); // Установить скорость (в шагах за секунду)
       stepper2.runSpeed(); // Начать движение с текущей заданной скоростью (без плавного ускорения)
     } else if (stepper2.isRunning()) { // Иначе выходит датчик холла 2 сработал и если двигатель вращался, тогда однократно остановить его
       stepper2.stop(); // Максимально быстрая остановка (без замедления), используя текущие параметры скорости и ускорения
@@ -129,7 +133,7 @@ void loop() {
     }
     // Если значение датчика холла 3
     if (hall3State == LOW) {
-      stepper3.setSpeed(STEPPER_DEFAULT_SPEED); // Установить скорость (в шагах за секунду)
+      stepper3.setSpeed(j3_speed); // Установить скорость (в шагах за секунду)
       stepper3.runSpeed(); // Начать движение с текущей заданной скоростью (без плавного ускорения)
     } else if (stepper3.isRunning()) { // Иначе выходит датчик холла 3 сработал и если двигатель вращался, тогда однократно остановить его
       stepper3.stop(); // Максимально быстрая остановка (без замедления), используя текущие параметры скорости и ускорения
@@ -142,7 +146,7 @@ void loop() {
     }
   } else if (robotState == 1) { // Состояние 1 - ожидание новых значений для перемещения
     // Проверяем изменились ли состояния переменных на новые
-    if (j1_deg_pos != j1_step_prev || j2_deg_pos != j2_step_prev || j3_deg_pos != j3_step_prev || claw_pos != claw_pos_prev) {
+    if (j1_deg_pos != j1_deg_prev || j2_deg_pos != j2_deg_prev || j3_deg_pos != j3_deg_prev || claw_pos != claw_pos_prev) {
       // Переводим градусы в шаги для шаговиков
       j1_step_pos = DegToStep(j1_deg_pos);
       j2_step_pos = DegToStep(j2_deg_pos);
@@ -156,29 +160,28 @@ void loop() {
       stepper1.run(); // Работать двигателю
     } else { // Достиг позиции
       stepper1.stop(); // Останавливаем шаговик
-      j1_step_prev = j1_step_pos; // Перезаписывем переменные о значениях, которые были выполнены в последний раз
+      j1_deg_prev = j1_deg_pos; // Перезаписывем переменные о значениях, которые были выполнены в последний раз
     }
     if (stepper2.currentPosition() != j2_step_pos) { // Шаговик 2 работает пока не достиг позицию
       stepper2.moveTo(j2_step_pos); // Установить двигателю позицию для вращения
       stepper2.run(); // Работать двигателю
     } else { // Достиг позиции
       stepper2.stop(); // Останавливаем шаговик
-      j2_step_prev = j2_step_pos; // Перезаписывем переменные о значениях, которые были выполнены в последний раз
+      j2_deg_prev = j2_deg_pos; // Перезаписывем переменные о значениях, которые были выполнены в последний раз
     }
     if (stepper3.currentPosition() != j3_step_pos) { // Шаговик 3 работает пока не достиг позицию
       stepper3.moveTo(j3_step_pos); // Установить двигателю позицию для вращения
       stepper3.run(); // Работать двигателю
     } else { // Достиг позиции
       stepper3.stop(); // Останавливаем шаговик
-      j3_step_prev = j3_step_pos; // Перезаписывем переменные о значениях, которые были выполнены в последний раз
+      j3_deg_prev = j3_deg_pos; // Перезаписывем переменные о значениях, которые были выполнены в последний раз
     }
     if (stepper1.currentPosition() == j1_step_pos && stepper2.currentPosition() == j2_step_pos && stepper3.currentPosition() == j3_step_pos) {
-      /*
       if (claw_pos != claw_pos_prev) { // Если новое значение не равно старому
         servo.write(claw_pos); // Повернуться серво
         delay(100); // Задержка
         claw_pos_prev = claw_pos; // Записать новое значение положения, которое было в последний раз
-      }*/
+      }
       robotState = 1; // Переключаем в состояние ожидания новых значений
       Serial.println("robotState: 1");
     }
@@ -227,11 +230,14 @@ void ReadFromWiFiSerial() {
       } else if (key[i] == "j3_deg_pos") {
         j3_deg_pos = values[i]; // Записываем позицию в граусах j3
       } else if (key[i] == "j1_speed") {
-        stepper1.setSpeed(constrain(values[i], STEPPER_MIN_SPEED, STEPPER_MAX_SPEED)); // Записываем скорость j1
+        j1_speed = constrain(values[i], STEPPER_MIN_SPEED, STEPPER_MAX_SPEED);
+        stepper1.setSpeed(j1_speed); // Записываем скорость j1
       } else if (key[i] == "j2_speed") {
-        stepper2.setSpeed(constrain(values[i], STEPPER_MIN_SPEED, STEPPER_MAX_SPEED)); // Записываем скорость j2
+        j2_speed = constrain(values[i], STEPPER_MIN_SPEED, STEPPER_MAX_SPEED);
+        stepper2.setSpeed(j2_speed); // Записываем скорость j2
       } else if (key[i] == "j3_speed") {
-        stepper3.setSpeed(constrain(values[i], STEPPER_MIN_SPEED, STEPPER_MAX_SPEED)); // Записываем скорость j3
+        j3_speed = constrain(values[i], STEPPER_MIN_SPEED, STEPPER_MAX_SPEED);
+        stepper3.setSpeed(j3_speed); // Записываем скорость j3
       } else if (key[i] == "j1_accel") {
         stepper1.setAcceleration(constrain(values[i], STEPPER_MIN_ACCEL, STEPPER_MAX_ACCEL)); // Записываем ускорение j1
       } else if (key[i] == "j2_accel") {
