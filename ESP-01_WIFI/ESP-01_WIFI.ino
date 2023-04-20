@@ -30,9 +30,9 @@ void build() {
 
   M_BLOCK_TAB(
     "Joints control",
-    M_BOX(GP.LABEL("Slider J1 degress"); GP.SLIDER("j1", j1_pos_val, 0, 360); );
-    M_BOX(GP.LABEL("Slider J2 degress"); GP.SLIDER("j2", j2_pos_val, 0, 360); );
-    M_BOX(GP.LABEL("Slider J3 degress"); GP.SLIDER("j3", j3_pos_val, 0, 360); );
+    M_BOX(GP.LABEL("Slider J1 degress"); GP.SLIDER("j1_pos_val", j1_pos_val, 0, 360); );
+    M_BOX(GP.LABEL("Slider J2 degress"); GP.SLIDER("j2_pos_val", j2_pos_val, 0, 360); );
+    M_BOX(GP.LABEL("Slider J3 degress"); GP.SLIDER("j3_pos_val", j3_pos_val, 0, 360); );
     M_BOX(GP.LABEL("Slider CLAW POSITION"); GP.SLIDER("claw_pos_val", claw_pos_val, 0, 180); );
   );
 
@@ -42,6 +42,17 @@ void build() {
     M_BOX(GP.LABEL("x"); GP.NUMBER("ik_x", "number", x_val); );
     M_BOX(GP.LABEL("y"); GP.NUMBER("ik_y", "number", y_val); );
     M_BOX(GP.LABEL("z"); GP.NUMBER("ik_z", "number", z_val); );
+  );
+
+  M_BLOCK_TAB(
+    "Steppers settings",
+    GP.LABEL("Inputs");
+    M_BOX(GP.LABEL("j1 speed"); GP.NUMBER("j1_speed_val", "number", j1_speed_val); );
+    M_BOX(GP.LABEL("j1 accel"); GP.NUMBER("j1_accel_val", "number", j1_accel_val); );
+    M_BOX(GP.LABEL("j2 speed"); GP.NUMBER("j2_speed_val", "number", j2_speed_val); );
+    M_BOX(GP.LABEL("j2 accel"); GP.NUMBER("j2_accel_val", "number", j2_accel_val); );
+    M_BOX(GP.LABEL("j3 speed"); GP.NUMBER("j3_speed_val", "number", j3_speed_val); );
+    M_BOX(GP.LABEL("j3 accel"); GP.NUMBER("j3_accel_val", "number", j3_accel_val); );
   );
 
   GP.BUTTON("send_btn", "Send");
@@ -67,13 +78,19 @@ void setup() {
 
 void action() {
   if (ui.click()) { // Если был клиек по любому компоненту
-    if (ui.clickInt("j1", j1_pos_val)) j1_val_upd = true;
-    if (ui.clickInt("j2", j2_pos_val)) j2_val_upd = true;
-    if (ui.clickInt("j3", j3_pos_val)) j3_val_upd = true;
-    if (ui.clickInt("claw_pos", claw_pos_val)) claw_pos_val_upd = true;
+    if (ui.clickInt("j1_pos_val", j1_pos_val)) j1_val_upd = true;
+    if (ui.clickInt("j2_pos_val", j2_pos_val)) j2_val_upd = true;
+    if (ui.clickInt("j3_pos_val", j3_pos_val)) j3_val_upd = true;
+    if (ui.clickInt("claw_pos_val", claw_pos_val)) claw_pos_val_upd = true;
     if (ui.clickInt("ik_x", x_val)) x_val_upd = true;
     if (ui.clickInt("ik_y", y_val)) y_val_upd = true;
     if (ui.clickInt("ik_z", z_val)) z_val_upd = true;
+    if (ui.clickInt("j1_speed_val", j1_speed_val)) j1_speed_val_upd = true;
+    if (ui.clickInt("j1_accel_val", j1_accel_val)) j1_accel_val_upd = true;
+    if (ui.clickInt("j2_speed_val", j2_speed_val)) j2_speed_val_upd = true;
+    if (ui.clickInt("j2_accel_val", j2_accel_val)) j2_accel_val_upd = true;
+    if (ui.clickInt("j3_speed_val", j3_speed_val)) j3_speed_val_upd = true;
+    if (ui.clickInt("j3_accel_val", j3_accel_val)) j3_accel_val_upd = true;
 
     if (ui.click("send_btn")) { // Отправить по нажатию кнопки
       String out_str = ""; // Создаём стоку для передачи по Serial
