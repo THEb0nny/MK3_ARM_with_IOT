@@ -44,6 +44,8 @@ void build() {
     M_BOX(GP.LABEL("z"); GP.NUMBER("ik_z", "number", z_val); );
   );
 
+  GP.BUTTON("send_btn", "Send");
+
   M_BLOCK_TAB(
     "Steppers settings",
     GP.LABEL("Inputs");
@@ -55,7 +57,6 @@ void build() {
     M_BOX(GP.LABEL("j3 accel"); GP.NUMBER("j3_accel_val", "number", j3_accel_val); );
   );
 
-  GP.BUTTON("send_btn", "Send");
   GP.BUILD_END();
 }
 
@@ -77,7 +78,7 @@ void setup() {
 }
 
 void action() {
-  if (ui.click()) { // Если был клиек по любому компоненту
+  if (ui.click()) { // Если был клик по любому компоненту
     if (ui.clickInt("j1_pos_val", j1_pos_val)) j1_val_upd = true;
     if (ui.clickInt("j2_pos_val", j2_pos_val)) j2_val_upd = true;
     if (ui.clickInt("j3_pos_val", j3_pos_val)) j3_val_upd = true;
