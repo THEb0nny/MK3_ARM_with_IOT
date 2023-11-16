@@ -9,10 +9,12 @@
 // https://github.com/NicoHood/PinChangeInterrupt
 // https://github.com/GyverLibs/TimerMs
 // https://lastminuteengineers.com/28byj48-stepper-motor-arduino-tutorial/
+// https://github.com/GyverLibs/GParser
 
 #include "AccelStepper.h"
 #include "PinChangeInterrupt.h"
 #include <Servo.h>
+#include <GParser.h>
 
 #define WIFI_SERIAL Serial3 // Serial1: пины 19(RX1) и 18(TX1); Serial2: пины 17(RX2) и 16(TX2); Serial3: пины 15(RX3) и 14(TX3)
 
@@ -56,7 +58,7 @@
 
 #define CLAW_SERVO_PIN 5 // Пин сервопривода
 
-Servo servo; // Инициализируем объект серво
+Servo claw_servo; // Инициализируем объект серво
 
 // Определяем объекты шаговых двигателей
 AccelStepper stepper1(STEPMODE, STEPPER1_PIN1, STEPPER1_PIN3, STEPPER1_PIN2, STEPPER1_PIN4);
@@ -69,12 +71,10 @@ volatile byte hall3State = LOW; // Переменная для записи зн
 
 byte robotState = 0; // Переменая конечного автомата нахождения в состоянии робота
 
-bool ipIsPrinted = false; // Переменая флажок о том, что IP, полученный по Serial в первый раз был напечатан
-
 int j1_speed = STEPPER_DEFAULT_SPEED, j2_speed = STEPPER_DEFAULT_SPEED, j3_speed = STEPPER_DEFAULT_SPEED; // Переменные для хранения скорости двигателей
-int j1_step_pos, j2_step_pos, j3_step_pos; // Переменные для хранения значений сколько шагов нужно выполнить
-int j1_deg_pos, j2_deg_pos, j3_deg_pos, claw_pos; // Переменные для хранения значений, которые были считаны по Serial
-int j1_deg_prev, j2_deg_prev, j3_deg_prev, claw_pos_prev; // Переменные для хранения значений, которые были получены по Serial и выполнены в прошлый раз
+int j1_step_pos = 0, j2_step_pos = 0, j3_step_pos = 0; // Переменные для хранения значений сколько шагов нужно выполнить
+int j1_deg_pos = 0, j2_deg_pos = 0, j3_deg_pos = 0, claw_pos = 90; // Переменные для хранения значений, которые были считаны по Serial
+int j1_deg_prev = 0, j2_deg_prev = 0, j3_deg_prev = 0, claw_pos_prev = claw_pos; // Переменные для хранения значений, которые были получены по Serial и выполнены в прошлый раз
 
 // Функция-обработчик прерывания датчика холла 1
 void HallSensor1Handler(void) {
@@ -94,6 +94,8 @@ void HallSensor3Handler(void) {
 void setup() {
   Serial.begin(115200); // Инициализируем скорость передачи данных с компом
   WIFI_SERIAL.begin(115200); // Инициализируем скорость передачи данных с ESP-01
+  Serial.setTimeout(5);
+  WIFI_SERIAL.setTimeout(5);
   pinMode(HALL_SEN1_PIN, INPUT_PULLUP); // Настраиваем пин с датчиком холла 1
   pinMode(HALL_SEN2_PIN, INPUT_PULLUP); // Настраиваем пин с датчиком холла 2
   pinMode(HALL_SEN3_PIN, INPUT_PULLUP); // Настраиваем пин с датчиком холла 3
@@ -109,26 +111,15 @@ void setup() {
   stepper3.setSpeed(STEPPER_DEFAULT_ACCEL);
   stepper3.setMaxSpeed(STEPPER_MAX_SPEED);
   stepper3.setAcceleration(STEPPER_DEFAULT_ACCEL);
-  servo.attach(CLAW_SERVO_PIN); // Подключение серво
+  claw_servo.attach(CLAW_SERVO_PIN); // Подключение серво
+  claw_servo.write(claw_pos); // Установить позицию серво клешни при старте
 }
  
 void loop() {
-  if (robotState == 1) {
-    if (!ipIsPrinted) { // В первый раз считываем Ip, который отправил Wi-Fi модуль по Serial
-      if (WIFI_SERIAL.available()) { // Если приходят данные из Wi-Fi модуля
-        // Встроенная функция readStringUntil будет читать все данные, пришедшие в UART до специального символа — '\n' (перенос строки).
-        // Он появляется в паре с '\r' (возврат каретки) при передаче данных функцией Serial.println().
-        // Эти символы удобно передавать для разделения команд, но не очень удобно обрабатывать. Удаляем их функцией trim().
-        String inputStrWithIp = WIFI_SERIAL.readStringUntil('\n');
-        inputStrWithIp.trim(); // Чистим символы
-        Serial.println(inputStrWithIp); // Выводим в Serial на комп
-        ipIsPrinted = true; // Меняем состояние переменной вывода id
-      }
-    } else ReadFromWiFiSerial(); // Считываем заначения из Serial только при состоянии ожидания считывания новых значений
-  }
   if (robotState == 0) { // Состояние 0 - роботу переместиться в нелевые позиции при старте
     MoveToZeroPos(); // Вызвать функцию перемещения манипулятора моторами на нулевую позицию
   } else if (robotState == 1) { // Состояние 1 - ожидание новых значений для перемещения
+    ParseFromSerialInputValues(true); // Считать с Serial значения полученные от контроллера ESP
     // Проверяем изменились ли состояния переменных входных значений на новые
     if (j1_deg_pos != j1_deg_prev || j2_deg_pos != j2_deg_prev || j3_deg_pos != j3_deg_prev || claw_pos != claw_pos_prev) {
       // Переводим градусы в шаги для шаговиков
@@ -162,7 +153,7 @@ void loop() {
     }
     if (stepper1.currentPosition() == j1_step_pos && stepper2.currentPosition() == j2_step_pos && stepper3.currentPosition() == j3_step_pos) {
       if (claw_pos != claw_pos_prev) { // Если новое значение не равно старому
-        servo.write(claw_pos); // Повернуться серво
+        claw_servo.write(claw_pos); // Повернуться серво
         delay(100); // Задержка
         claw_pos_prev = claw_pos; // Записать новое значение положения, которое было в последний раз
       }
@@ -213,59 +204,53 @@ float DegToStep(float deg) {
   return steps;
 }
 
-// Функция считывания значений по Serial от WI-FI модуля
-void ReadFromWiFiSerial() {
-  // Если приходят данные из Wi-Fi модуля - отправим их в порт компьютера
-  if (WIFI_SERIAL.available()) {
-    String inputValues[MAX_TAKE_VAL_AT_SERIAL]; // Массив входящей строки
-    String key[MAX_TAKE_VAL_AT_SERIAL]; // Массив ключей
-    int values[MAX_TAKE_VAL_AT_SERIAL]; // Массив значений
-    // Встроенная функция readStringUntil будет читать все данные, пришедшие в UART до специального символа — '\n' (перенос строки).
-    // Он появляется в паре с '\r' (возврат каретки) при передаче данных функцией Serial.println().
-    // Эти символы удобно передавать для разделения команд, но не очень удобно обрабатывать. Удаляем их функцией trim().
-    String inputStr = WIFI_SERIAL.readStringUntil('\n');
-    inputStr.trim(); // Чистим символы
-    char strBuffer[99]; // Создаём пустой массив символов
-    inputStr.toCharArray(strBuffer, 99); // Перевести строку в массив символов последующего разделения по пробелам
-    // Считываем x и y разделённых пробелом, а также z и инструмент
-    for (byte i = 0; i < MAX_TAKE_VAL_AT_SERIAL; i++) {
-      inputValues[i] = (i == 0 ? String(strtok(strBuffer, " ")) : String(strtok(NULL, " ")));
-      inputValues[i].replace(" ", ""); // Убрать возможные пробелы между символами
-    }
-    for (byte i = 0; i < MAX_TAKE_VAL_AT_SERIAL; i++) {
-      if (inputValues[i] == "") continue; // Если значение пустое, то перейти на следующий шаг цикла
-      String inputValue = inputValues[i]; // Записываем в строку обрезанную часть пробелами
-      byte separatorIndexTmp = inputValue.indexOf("="); // Узнаём позицию знака равно
-      byte separatorIndex = (separatorIndexTmp != 255 ? separatorIndexTmp : inputValue.length());
-      key[i] = inputValue.substring(0, separatorIndex); // Записываем ключ с начала строки до знака равно
-      values[i] = (inputValue.substring(separatorIndex + 1, inputValue.length())).toInt(); // Записываем значение с начала цифры до конца строки
-      if (key[i] == "claw_pos") {
-        claw_pos = values[i]; // Записываем позицию servo клешни
-      } else if (key[i] == "j1_deg_pos") {
-        j1_deg_pos = values[i]; // Записываем позицию в граусах j1
-      } else if (key[i] == "j2_deg_pos") {
-        j2_deg_pos = values[i]; // Записываем позицию в граусах j2
-      } else if (key[i] == "j3_deg_pos") {
-        j3_deg_pos = values[i]; // Записываем позицию в граусах j3
-      } else if (key[i] == "j1_speed") {
-        j1_speed = constrain(values[i], STEPPER_MIN_SPEED, STEPPER_MAX_SPEED); // Огранчиваем входные значения скоростей для j1
-        stepper1.setSpeed(j1_speed); // Записываем скорость j1
-      } else if (key[i] == "j2_speed") {
-        j2_speed = constrain(values[i], STEPPER_MIN_SPEED, STEPPER_MAX_SPEED); // Огранчиваем входные значения скоростей для j2
-        stepper2.setSpeed(j2_speed); // Записываем скорость j2
-      } else if (key[i] == "j3_speed") {
-        j3_speed = constrain(values[i], STEPPER_MIN_SPEED, STEPPER_MAX_SPEED); // Огранчиваем входные значения скоростей для j3
-        stepper3.setSpeed(j3_speed); // Записываем скорость j3
-      } else if (key[i] == "j1_accel") {
-        stepper1.setAcceleration(constrain(values[i], STEPPER_MIN_ACCEL, STEPPER_MAX_ACCEL)); // Записываем ускорение j1
-      } else if (key[i] == "j2_accel") {
-        stepper2.setAcceleration(constrain(values[i], STEPPER_MIN_ACCEL, STEPPER_MAX_ACCEL)); // Записываем ускорение j2
-      } else if (key[i] == "j3_accel") {
-        stepper3.setAcceleration(constrain(values[i], STEPPER_MIN_ACCEL, STEPPER_MAX_ACCEL)); // Записываем ускорение j3
+// Парсинг значений из Serial от WI-FI модуля
+void ParseFromSerialInputValues(bool debug) {
+  if (Serial.available() > 2) { // Если что-то прислали
+    char inputStr[60]; // Массив символов для записи из Serial
+    int amount = Serial.readBytesUntil(';', inputStr, 60); // Считать посимвольно до символа конца пакета точки с запятой и записать количество полученных байт в переменную
+    inputStr[amount] = NULL; // Если отправляющее устройство не отправит нулевой символ, то он не запишется в буффер и вывод строк будет некорректным, решение дописать вручную и т.о. закрываем строку
+    GParser data(inputStr, ','); // Парсим массив символов по символу запятой
+    int am = data.split(); // Получаем количество данных, внимание, ломает строку!
+    for (int i = 0; i < am; i++) {
+      String tmpStr = data[i];
+      tmpStr.replace(" ", ""); // Удалить пробел, если он был введёт по ошибке
+      char tmpCharArr[tmpStr.length()];
+      tmpStr.toCharArray(tmpCharArr, tmpStr.length() + 1);
+      if (debug) Serial.println(String(i) + ") " + tmpStr); // Вывести начальную строку
+      GParser data2(tmpCharArr, ':'); // Парсим массив символов по символу запятой
+      int am2 = data2.split(); // Получаем количество данных, внимание, ломает строку!
+      if (am2 > 1) { // Если существует не только ключ, а ещё и значение
+        String key = data2[0]; // Ключ - первое значение
+        int value = data2.getInt(1); // Значение - второе
+        if (debug) Serial.println("key: " + key + ", value: " + String(value)); // Вывод
+        // Присваивание значений
+        if (key == "claw_pos") {
+          claw_pos = value; // Записываем позицию servo клешни
+        } else if (key == "j1_pos") {
+          j1_deg_pos = value; // Записываем позицию в градусах j1
+        } else if (key == "j2_pos") {
+          j2_deg_pos = value; // Записываем позицию в градусах j2
+        } else if (key == "j3_pos") {
+          j3_deg_pos = value; // Записываем позицию в градусах j3
+        } else if (key == "j1_speed") {
+          j1_speed = constrain(value, STEPPER_MIN_SPEED, STEPPER_MAX_SPEED); // Огранчиваем входные значения скоростей для j1
+          stepper1.setSpeed(j1_speed); // Записываем скорость j1
+        } else if (key == "j2_speed") {
+          j2_speed = constrain(value, STEPPER_MIN_SPEED, STEPPER_MAX_SPEED); // Огранчиваем входные значения скоростей для j2
+          stepper2.setSpeed(j2_speed); // Записываем скорость j2
+        } else if (key == "j3_speed") {
+          j3_speed = constrain(value, STEPPER_MIN_SPEED, STEPPER_MAX_SPEED); // Огранчиваем входные значения скоростей для j3
+          stepper3.setSpeed(j3_speed); // Записываем скорость j3
+        } else if (key == "j1_accel") {
+          stepper1.setAcceleration(constrain(value, STEPPER_MIN_ACCEL, STEPPER_MAX_ACCEL)); // Записываем ускорение j1
+        } else if (key == "j2_accel") {
+          stepper2.setAcceleration(constrain(value, STEPPER_MIN_ACCEL, STEPPER_MAX_ACCEL)); // Записываем ускорение j2
+        } else if (key == "j3_accel") {
+          stepper3.setAcceleration(constrain(value, STEPPER_MIN_ACCEL, STEPPER_MAX_ACCEL)); // Записываем ускорение j3
+        }
       }
-      if (key[i].length() > 0) { // Печать ключ и значение, если ключ существует
-        Serial.println(String(key[i]) + " = " + String(values[i]));
-      }
+      if (debug) Serial.println(); // Перевод на новую строку для разделения значений, которые были введены
     }
   }
 }

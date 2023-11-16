@@ -25,9 +25,9 @@
 
 GyverHub hub("Manipulator", "MK3", ""); // Инициализация объекта hub с префиксом, имя, иконка
 
-int j1_pos_val = 0, j2_pos_val = 0, j3_pos_val = 0, claw_pos_val = 90;
-int j1_speed_val = STEPPER_DEFAULT_SPEED, j2_speed_val = STEPPER_DEFAULT_SPEED, j3_speed_val = STEPPER_DEFAULT_SPEED;
-int j1_accel_val = STEPPER_DEFAULT_ACCEL, j2_accel_val = STEPPER_DEFAULT_ACCEL, j3_accel_val = STEPPER_DEFAULT_ACCEL;
+int j1_pos = 0, j2_pos = 0, j3_pos = 0, claw_pos = 90;
+int j1_speed = STEPPER_DEFAULT_SPEED, j2_speed = STEPPER_DEFAULT_SPEED, j3_speed = STEPPER_DEFAULT_SPEED;
+int j1_accel = STEPPER_DEFAULT_ACCEL, j2_accel = STEPPER_DEFAULT_ACCEL, j3_accel = STEPPER_DEFAULT_ACCEL;
 int x_val = 0, y_val = 0, z_val = 0;
 
 // Переменные для интерфейса
@@ -45,7 +45,7 @@ void setup() {
     if (DEBUG) Serial.print(".");
   }
   Serial.println();
-  Serial.println(WiFi.localIP()); // Печать локального IP адреса
+  if (DEBUG) Serial.println(WiFi.localIP()); // Печать локального IP адреса
   hub.setupMQTT("m8.wqtt.ru", MQTT_PORT, MQTT_USR_NAME, MQTT_USR_PASS); // Настройка MQTT
   hub.onBuild(build); // Подключаем билдер
   hub.begin(); // Запускаем систему
@@ -61,14 +61,14 @@ void build() {
   if (tab == 0) {
     hub.BeginWidgets(); // Начинает новую горизонтальную строку виджетов
     hub.WidgetSize(100); // Указываем, что последующие виджеты будут шириной 100%
-    if (hub.Slider(&j1_pos_val, GH_UINT8, F("J1 degress"), 0, 360, 1) && DEBUG) { // К слайдеру подключена переменная j1_pos_slider
-      Serial.println("Slider J1 deg: " + String(j1_pos_val)); // Переменная уже обновилась и новое значение доступно во всей области определения
+    if (hub.Slider(&j1_pos, GH_UINT8, F("J1 degress"), 0, 360, 1) && DEBUG) { // К слайдеру подключена переменная j1_pos_slider
+      Serial.println("Slider J1 deg: " + String(j1_pos)); // Переменная уже обновилась и новое значение доступно во всей области определения
     }
-    if (hub.Slider(&j2_pos_val, GH_UINT8, F("J2 degress"), 0, 360, 1) && DEBUG) { // К слайдеру подключена переменная j2_pos_slider
-      Serial.println("Slider J2 deg: " + String(j2_pos_val)); // Переменная уже обновилась и новое значение доступно во всей области определения
+    if (hub.Slider(&j2_pos, GH_UINT8, F("J2 degress"), 0, 360, 1) && DEBUG) { // К слайдеру подключена переменная j2_pos_slider
+      Serial.println("Slider J2 deg: " + String(j2_pos)); // Переменная уже обновилась и новое значение доступно во всей области определения
     }
-    if (hub.Slider(&j3_pos_val, GH_UINT8, F("J3 degress"), 0, 360, 1) && DEBUG) { // К слайдеру подключена переменная j3_pos_slider
-      Serial.println("Slider J3 deg: " + String(j3_pos_val)); // Переменная уже обновилась и новое значение доступно во всей области определения
+    if (hub.Slider(&j3_pos, GH_UINT8, F("J3 degress"), 0, 360, 1) && DEBUG) { // К слайдеру подключена переменная j3_pos_slider
+      Serial.println("Slider J3 deg: " + String(j3_pos)); // Переменная уже обновилась и новое значение доступно во всей области определения
     }
     hub.EndWidgets(); // Закончим отрисовку виджетов
   } else if (tab == 1) {
@@ -87,31 +87,31 @@ void build() {
   }
   if (tab == 0 || tab == 1) {
     hub.BeginWidgets(); // Начинает новую горизонтальную строку виджетов
-    if (hub.Slider(&claw_pos_val, GH_UINT8, F("Servo Claw position"), 0, 180, 1) && DEBUG) { // К слайдеру подключена переменная servo_claw_pos_slider
-      Serial.println("Slider Сlaw pos: " + String(claw_pos_val)); // Переменная уже обновилась и новое значение доступно во всей области определения
+    if (hub.Slider(&claw_pos, GH_UINT8, F("Servo Claw position"), 0, 180, 1) && DEBUG) { // К слайдеру подключена переменная servo_claw_pos_slider
+      Serial.println("Slider Сlaw pos: " + String(claw_pos)); // Переменная уже обновилась и новое значение доступно во всей области определения
     }
     hub.EndWidgets(); // Закончим отрисовку виджетов
   }
   if (tab == 2) {
     hub.BeginWidgets(); // Начинает новую горизонтальную строку виджетов
     hub.WidgetSize(100); // Указываем, что последующие виджеты будут шириной 100%
-    if (hub.Slider(&j1_speed_val, GH_UINT8, F("J1 speed"), STEPPER_MIN_SPEED, STEPPER_MAX_SPEED, STEPPERS_SPEED_STEP_SLIDERS) && DEBUG) { // К слайдеру подключена переменная j1_speed_val
-      Serial.println("Slider J1 speed: " + String(j1_speed_val)); // Переменная уже обновилась и новое значение доступно во всей области определения
+    if (hub.Slider(&j1_speed, GH_UINT8, F("J1 speed"), STEPPER_MIN_SPEED, STEPPER_MAX_SPEED, STEPPERS_SPEED_STEP_SLIDERS) && DEBUG) { // К слайдеру подключена переменная j1_speed
+      Serial.println("Slider J1 speed: " + String(j1_speed)); // Переменная уже обновилась и новое значение доступно во всей области определения
     }
-    if (hub.Slider(&j1_accel_val, GH_UINT8, F("J1 acceleration"), STEPPER_MIN_ACCEL, STEPPER_MAX_ACCEL, STEPPERS_ACCEL_STEP_SLIDERS) && DEBUG) { // К слайдеру подключена переменная j1_accel_val
-      Serial.println("Slider J1 accel: " + String(j1_accel_val)); // Переменная уже обновилась и новое значение доступно во всей области определения
+    if (hub.Slider(&j1_accel, GH_UINT8, F("J1 acceleration"), STEPPER_MIN_ACCEL, STEPPER_MAX_ACCEL, STEPPERS_ACCEL_STEP_SLIDERS) && DEBUG) { // К слайдеру подключена переменная j1_accel
+      Serial.println("Slider J1 accel: " + String(j1_accel)); // Переменная уже обновилась и новое значение доступно во всей области определения
     }
-    if (hub.Slider(&j2_speed_val, GH_UINT8, F("J2 speed"), STEPPER_MIN_SPEED, STEPPER_MAX_SPEED, STEPPERS_SPEED_STEP_SLIDERS) && DEBUG) {
-      Serial.println("Slider J2 speed: " + String(j2_speed_val));
+    if (hub.Slider(&j2_speed, GH_UINT8, F("J2 speed"), STEPPER_MIN_SPEED, STEPPER_MAX_SPEED, STEPPERS_SPEED_STEP_SLIDERS) && DEBUG) {
+      Serial.println("Slider J2 speed: " + String(j2_speed));
     }
-    if (hub.Slider(&j2_accel_val, GH_UINT8, F("J2 acceleration"), STEPPER_MIN_ACCEL, STEPPER_MAX_ACCEL, STEPPERS_ACCEL_STEP_SLIDERS) && DEBUG) {
-      Serial.println("Slider J1 accel: " + String(j2_accel_val));
+    if (hub.Slider(&j2_accel, GH_UINT8, F("J2 acceleration"), STEPPER_MIN_ACCEL, STEPPER_MAX_ACCEL, STEPPERS_ACCEL_STEP_SLIDERS) && DEBUG) {
+      Serial.println("Slider J1 accel: " + String(j2_accel));
     }
-    if (hub.Slider(&j3_speed_val, GH_UINT8, F("J3 speed"), STEPPER_MIN_SPEED, STEPPER_MAX_SPEED, STEPPERS_SPEED_STEP_SLIDERS) && DEBUG) {
-      Serial.println("Slider J3 speed: " + String(j3_speed_val));
+    if (hub.Slider(&j3_speed, GH_UINT8, F("J3 speed"), STEPPER_MIN_SPEED, STEPPER_MAX_SPEED, STEPPERS_SPEED_STEP_SLIDERS) && DEBUG) {
+      Serial.println("Slider J3 speed: " + String(j3_speed));
     }
-    if (hub.Slider(&j3_accel_val, GH_UINT8, F("J3 acceleration"), STEPPER_MIN_ACCEL, STEPPER_MAX_ACCEL, STEPPERS_ACCEL_STEP_SLIDERS) && DEBUG) {
-      Serial.println("Slider J1 accel: " + String(j3_accel_val));
+    if (hub.Slider(&j3_accel, GH_UINT8, F("J3 acceleration"), STEPPER_MIN_ACCEL, STEPPER_MAX_ACCEL, STEPPERS_ACCEL_STEP_SLIDERS) && DEBUG) {
+      Serial.println("Slider J1 accel: " + String(j3_accel));
     }
     hub.EndWidgets(); // Закончим отрисовку виджетов
   }
@@ -121,11 +121,11 @@ void build() {
   if (hub.Button(&send_btn, F("Send"), GH_YELLOW)) { // К кнопке подключена переменная send_btn
     if (DEBUG) Serial.println("Button send pressed");
     if (tab == 0) { // Проверяем в какой вкладке находимся, такие значения и будем отправлять
-      Serial.println("j1_pos_val:" + String(j1_pos_val) + "," + "j2_pos_val:" + String(j2_pos_val) + "," + "j3_pos_val:" + String(j3_pos_val) + "," + "claw_pos_val:" + String(claw_pos_val) + ";");
+      Serial.println("j1_pos:" + String(j1_pos) + "," + "j2_pos:" + String(j2_pos) + "," + "j3_pos:" + String(j3_pos) + "," + "claw_pos:" + String(claw_pos) + ";");
     } else if (tab == 1) {
-      Serial.println("x_val:" + String(x_val) + "," + "y_val:" + String(y_val) + "," + "z_val:" + String(z_val) + "," + "claw_pos_val:" + String(claw_pos_val) + ";");
+      Serial.println("x_val:" + String(x_val) + "," + "y_val:" + String(y_val) + "," + "z_val:" + String(z_val) + "," + "claw_pos:" + String(claw_pos) + ";");
     } else if (tab == 2) {
-      Serial.println("j1_speed_val:" + String(j1_speed_val) + "," + "j1_accel_val:" + String(j1_accel_val) + "," + "j2_speed_val:" + String(j2_speed_val) + "," + "j2_accel_val:" + String(j2_accel_val) + "j3_speed_val:" + String(j3_speed_val) + "," + "j3_accel_val:" + String(j3_accel_val) + ";");
+      Serial.println("j1_speed:" + String(j1_speed) + "," + "j1_accel:" + String(j1_accel) + "," + "j2_speed:" + String(j2_speed) + "," + "j2_accel:" + String(j2_accel) + "j3_speed:" + String(j3_speed) + "," + "j3_accel:" + String(j3_accel) + ";");
     }
   }
   hub.EndWidgets(); // Закончим отрисовку виджетов
