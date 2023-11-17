@@ -94,8 +94,8 @@ void HallSensor3Handler(void) {
 void setup() {
   Serial.begin(115200); // Инициализируем скорость передачи данных с компом
   WIFI_SERIAL.begin(115200); // Инициализируем скорость передачи данных с ESP-01
-  Serial.setTimeout(5);
-  WIFI_SERIAL.setTimeout(5);
+  Serial.setTimeout(5); // Позволяет задать время ожидания данных
+  WIFI_SERIAL.setTimeout(5); // Позволяет задать время ожидания данных
   pinMode(HALL_SEN1_PIN, INPUT_PULLUP); // Настраиваем пин с датчиком холла 1
   pinMode(HALL_SEN2_PIN, INPUT_PULLUP); // Настраиваем пин с датчиком холла 2
   pinMode(HALL_SEN3_PIN, INPUT_PULLUP); // Настраиваем пин с датчиком холла 3
@@ -207,14 +207,15 @@ float DegToStep(float deg) {
 // Парсинг значений из Serial от WI-FI модуля
 void ParseFromSerialInputValues(bool debug) {
   if (Serial.available() > 2) { // Если что-то прислали
-    char inputStr[60]; // Массив символов для записи из Serial
-    int amount = Serial.readBytesUntil(';', inputStr, 60); // Считать посимвольно до символа конца пакета точки с запятой и записать количество полученных байт в переменную
+    char inputStr[64]; // Массив символов для записи из Serial
+    int amount = Serial.readBytesUntil(';', inputStr, 64); // Считать посимвольно до символа конца пакета точки с запятой и записать количество полученных байт в переменную
     inputStr[amount] = NULL; // Если отправляющее устройство не отправит нулевой символ, то он не запишется в буффер и вывод строк будет некорректным, решение дописать вручную и т.о. закрываем строку
     GParser data(inputStr, ','); // Парсим массив символов по символу запятой
     int am = data.split(); // Получаем количество данных, внимание, ломает строку!
     for (int i = 0; i < am; i++) {
       String tmpStr = data[i];
       tmpStr.replace(" ", ""); // Удалить пробел, если он был введёт по ошибке
+      tmpStr.trim(); // Удаление ведущими и конечные пробелы
       char tmpCharArr[tmpStr.length()];
       tmpStr.toCharArray(tmpCharArr, tmpStr.length() + 1);
       if (debug) Serial.println(String(i) + ") " + tmpStr); // Вывести начальную строку

@@ -121,11 +121,11 @@ void build() {
   if (hub.Button(&send_btn, F("Send"), GH_YELLOW)) { // К кнопке подключена переменная send_btn
     if (DEBUG) Serial.println("Button send pressed");
     if (tab == 0) { // Проверяем в какой вкладке находимся, такие значения и будем отправлять
-      Serial.println("j1_pos:" + String(j1_pos) + "," + "j2_pos:" + String(j2_pos) + "," + "j3_pos:" + String(j3_pos) + "," + "claw_pos:" + String(claw_pos) + ";");
+      Serial.println("j1_pos:" + String(j1_pos) + ",j2_pos:" + String(j2_pos) + ",j3_pos:" + String(j3_pos) + ",claw_pos:" + String(claw_pos) + ";");
     } else if (tab == 1) {
-      Serial.println("x_val:" + String(x_val) + "," + "y_val:" + String(y_val) + "," + "z_val:" + String(z_val) + "," + "claw_pos:" + String(claw_pos) + ";");
+      Serial.println("x_val:" + String(x_val) + ",y_val:" + String(y_val) + ",z_val:" + String(z_val) + ",claw_pos:" + String(claw_pos) + ";");
     } else if (tab == 2) {
-      Serial.println("j1_speed:" + String(j1_speed) + "," + "j1_accel:" + String(j1_accel) + "," + "j2_speed:" + String(j2_speed) + "," + "j2_accel:" + String(j2_accel) + "j3_speed:" + String(j3_speed) + "," + "j3_accel:" + String(j3_accel) + ";");
+      Serial.println("j1_speed:" + String(j1_speed) + ",j1_accel:" + String(j1_accel) + ",j2_speed:" + String(j2_speed) + ",j2_accel:" + String(j2_accel) + ",j3_speed:" + String(j3_speed) + ",j3_accel:" + String(j3_accel) + ";");
     }
   }
   hub.EndWidgets(); // Закончим отрисовку виджетов
